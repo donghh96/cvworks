@@ -43,8 +43,8 @@ int main(int argc, char** argv)
     int width = image_in.cols;
     int hight = image_in.rows;
 
-    int black = 0;
-    int white = 0;
+//    int black = 0;
+//    int white = 0;
     //find any pixels not 255 or 0;
 //    for(int x=0; x<width; x++)
 //    {
@@ -77,10 +77,10 @@ int main(int argc, char** argv)
 
             //cout << "y="<< y << "x=" << x<< endl;
             //6: if ( i(x; y) != 0 ) (white) then
-            if((image_in.at<uchar>(y, x)) > 128)
+            if((image_in.at<uchar>(y, x)) > 60)
             {
                 //7: if (i(x - 1; y) != 0 (left) OR i(x; y - 1) != 0)(up) then
-                if((image_in.at<uchar>(y, x-1)) >128 || (image_in.at<uchar>(y-1, x))>128)
+                if((image_in.at<uchar>(y, x-1)) > 60 || (image_in.at<uchar>(y-1, x))>60)
                 {
                     //8: s1 = A[x - 1][y]
                     s1=A[x][y-1];
@@ -154,6 +154,7 @@ int main(int argc, char** argv)
 
     image_out.create(image_in.size(), CV_8UC3);
     int x1, y1;
+    int objects=0;
 
     for( int l=0; l<SET.size(); l++)
     {
@@ -162,6 +163,7 @@ int main(int argc, char** argv)
             int b=rand()%256;
             int g=rand()%256;
             int r=rand()%256;
+            objects++;
             //cout <<b<<g<<r<<endl;
             for(set< pair<int,int> >::iterator it=SET[l].begin(); it!=SET[l].end(); it++)
             {
@@ -177,6 +179,9 @@ int main(int argc, char** argv)
             }
         }
     }
+
+    cout<<"There are " << objects << " objects in this image" << endl;
+
 
     imshow("image_in", image_in);
     imshow("image_out", image_out);
