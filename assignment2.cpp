@@ -1,4 +1,4 @@
-#include <stdio.h>
+//#include <stdio.h>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>
@@ -16,9 +16,10 @@ using namespace std;
 #define MpixelG(image, x, y)((uchar*)(((image).data) + (y)*((image).step)))[(x)*((image).channels())+1]
 #define MpixelR(image, x, y)((uchar*)(((image).data) + (y)*((image).step)))[(x)*((image).channels())+2]
 
+#define StandardLegLength 824
 
-//
-char *readBarcode(const Mat& image) {
+
+string readBarcode(const Mat& image) {
 
     vector <vector <int> > bitsArray;
 
@@ -82,57 +83,38 @@ char *readBarcode(const Mat& image) {
 
                     totalBlocks++;
                 }
-
-           }
-
+            }
         }
     }
 
     cout << "total blocks is: " << totalBlocks << endl;
 
-    char *output = new char[1050];
+    stringstream ss;
+
     for ( int i = 0; i < bitsArray.size(); i++) {
         int value = 32 * bitsArray[i][0] + 16 * bitsArray[i][1] + 8 * bitsArray[i][2] + 4 * bitsArray[i][3] + 2 * bitsArray[i][4] + bitsArray[i][5];
 
-        output[i] = encodingarray[value];
+        ss << encodingarray[value];
     }
+
+    string output = ss.str();
 
     return output;
 }
 
 
-float rotateAngle(Point &pLeftTop, Point &pLeftBottom, Point &pRightBottom, Float &legLength) {
+float rotateAngle(Mat& image, Point &pLeftTop, Point &pLeftBottom, Point &pRightBottom, float &legLength) {
 
-}
-
-
-int main(int argc, char** argv) {
-
-    Mat image, image_grey, image_rotated, image_final;
-
-    image = imread(argv[1], 1);
-
-    namedWindow("image", 1);
-    namedWindow("image_rotated", 1);
-//    namedWindow("image_grey", CV_8UC1);
-
-    image_final.create(1000, 1000, CV_8UC3);
-
-
-    // Rotate
+    Mat image_grey;
     cvtColor(image, image_grey, CV_BGR2GRAY);
     vector<Vec3f> circles;
     HoughCircles(image_grey, circles, CV_HOUGH_GRADIENT, 1, 100, 100, 30, 1, 30);
 
     for (size_t i=0; i<circles.size(); i++) {
         Vec3i c = circles[i];
-        circle(image, Point(c[0], c[1]), c[2], Scalar(0, 0, 255), 1, 1);
+        circle(image, Point(c[0], c[1]), c[2], Scalar(0, 0, 255), 3, 1);
         cout << "c[0]: " << c[0] << "  c[1]: " << c[1] << "  c[2]: " << c[2] << endl;
     }
-
-//    imshow("image_grey", image_grey);
-    // Find the center of circle -- done, we've found 3 circles
-    // find the lines, vector calculation?
 
     // calculate the length, find the two points
     float length01 = sqrt( pow((circles[0][0] - circles[1][0]), 2) + pow((circles[0][1] - circles[1][1]), 2));
@@ -141,133 +123,143 @@ int main(int argc, char** argv) {
     cout << "length01 " << length01 << endl;
     cout << "length02 " << length02 << endl;
 
-    Point p1, p2, p3;
-    float legLength;
-
     if (abs(length01 - length02) < 5 ) {
         cout << "3" << endl;
-        p1 = Point(circles[1][0], circles[1][1]);
-        p2 = Point(circles[2][0], circles[2][1]);
-        p3 = Point(circles[0][0], circles[0][1]);
+        pLeftTop = Point(circles[1][0], circles[1][1]);
+        pRightBottom = Point(circles[2][0], circles[2][1]);
+        pLeftBottom = Point(circles[0][0], circles[0][1]);
 
         legLength = length01;
     } else if (length01 > length02) {
         cout << "1" << endl;
-        p1 = Point(circles[0][0], circles[0][1]);
-        p2 = Point(circles[1][0], circles[1][1]);
-        p3 = Point(circles[2][0], circles[2][1]);
+        pLeftTop = Point(circles[0][0], circles[0][1]);
+        pRightBottom = Point(circles[1][0], circles[1][1]);
+        pLeftBottom = Point(circles[2][0], circles[2][1]);
 
         legLength = length02;
     } else if (length01 < length02) {
         cout << "2" << endl;
-        p1 = Point(circles[0][0], circles[0][1]);
-        p2 = Point(circles[2][0], circles[2][1]);
-        p3 = Point(circles[1][0], circles[1][1]);
+        pLeftTop = Point(circles[0][0], circles[0][1]);
+        pRightBottom = Point(circles[2][0], circles[2][1]);
+        pLeftBottom = Point(circles[1][0], circles[1][1]);
 
         legLength = length01;
     }
 
 
-    // rotate p1-p3 90 degree, got another point and check if it is p2???
+    // rotate pLeftTop-pLeftBottom 90 degree, got another point and check if it is pRightBottom
 
-    int x = p1.x - p3.x;
-    int y = p1.y - p3.y;
-    Point p4 = Point((p3.x - y), (x + p3.y));
+    int x = pLeftTop.x - pLeftBottom.x;
+    int y = pLeftTop.y - pLeftBottom.y;
+    Point p = Point((pLeftBottom.x - y), (x + pLeftBottom.y));
 
-    // if p2 p4 are not the same point
-    if(abs(p2.x-p4.x)>5 || abs(p2.y-p4.y)>5) {
+    // if pRightBottom and p are not the same point
+    if(abs(pRightBottom.x-p.x)>5 || abs(pRightBottom.y-p.y)>5) {
 
-        cout << "here I am" << endl;
-        Point tmp = p1;
-        p1 = p2;
-        p2 = tmp;
+        Point tmp = pLeftTop;
+        pLeftTop = pRightBottom;
+        pRightBottom = tmp;
     }
 
 
     // We need to cauculate the angle between vector (P1 P2), and vector (1, 1)
-    float theta = atan2((p2.y - p1.y), (p2.x - p1.x)) - atan2(1,1);
+    float theta = atan2((pRightBottom.y - pLeftTop.y), (pRightBottom.x - pLeftTop.x)) - atan2(1,1);
 
     theta = theta * 180 / CV_PI;
-//
+
     cout << "theta is: " << theta << endl;
 
+    return theta;
+}
 
-    image_rotated.create(image.size(), CV_8UC3);
 
-    Point center = Point((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
+int main(int argc, char** argv) {
 
-    float scale = 1;
-    if( abs (legLength - 824) > 5) {
-        scale = 824 / legLength;
+    Mat image, image_rotated, image_final;
+
+    if(argc != 2) {
+        cout << "The program takes 1 argument" << endl;
+        cout << argv[0] << " image_file_path" << endl;
+        exit(0);
     }
 
-    cout << scale <<endl;
-    // calculate the rotate matrix
-//    Mat rotateMatrix = getRotationMatrix2D(center, theta, scale);
+    image = imread(argv[1], 1);
 
-    // rotate it
-//    warpAffine(image, image_rotated, rotateMatrix, image.size());
+    if (image.empty())
+    {
+        cout << "Load image file failed." << endl;
+        exit(0);
+    }
 
+    image_rotated.create(image.size(), CV_8UC3);
+    image_final.create(1000, 1000, CV_8UC3);
 
+    // Rotate and Sale
+    Point pLeftTop, pLeftBottom, pRightBottom;
+    float legLength;
+    float theta;
+    int rotateAndScale = 0;
 
-//    Mat image_bigger = Mat
+    // Calculate the angle that the image needs to rotate
+    theta = rotateAngle(image, pLeftTop, pLeftBottom, pRightBottom, legLength);
 
-    // cut the image, to make it 1000 * 1000
+    // The center of
+    Point center = Point((pLeftTop.x + pRightBottom.x) / 2, (pLeftTop.y + pRightBottom.y) / 2);
 
-    cout << "image.rows"<<image.rows << endl;
-    cout << "image.cols"<<image.cols << endl;
-    cout << "image_rotated.rows"<<image_rotated.rows << endl;
-    cout << "image_rotated.cols"<<image_rotated.cols << endl;
-    cout << "image_final.rows"<<image_final.rows << endl;
-    cout << "image_final.cols"<<image_final.cols << endl;
+    if( abs(theta) < 1 ) {
+        cout << "No need to rotate" << endl;
+        image.copyTo(image_rotated);
+    } else {
 
+        float scale;
+        if( abs (legLength - StandardLegLength) > 6) {
+            scale = StandardLegLength / legLength;
+        } else {
+            scale = 1;
+            cout << "no need to scale" << endl;
+        }
 
-    // Now
-    // Scale
-//    if( abs(legLength - 824) > 5) {
-//
-//        // scale
-//        Mat image_scale;
-//        image_scale.create(image_rotated.size(), CV_8UC3);
-//
-//        warpAffine()
+        cout << "scale is: " << scale <<endl;
+        // calculate the rotate matrix
+        Mat rotateMatrix = getRotationMatrix2D(center, theta, scale);
 
-//    }
+        // rotate it
+        warpAffine(image, image_rotated, rotateMatrix, image.size());
+        imshow("image_rotated", image_rotated);
 
-//    image_final.create(1000, 1000, CV_8UC3);
-//    int x0 = center.x - 499;
-//    int y0 = center.y - 499;
-//    for (int i=0; i<1000; i++) {
-//        for (int j=0; j<1000; j++) {
-//            MpixelB(image_final, j, i) = MpixelB(image_rotated, y0 + j, x0 + i);
-//            MpixelG(image_final, j, i) = MpixelG(image_rotated, y0 + j, x0 + i);
-//            MpixelR(image_final, j, i) = MpixelR(image_rotated, y0 + j, x0 + i);
-//        }
-//    }
+        rotateAndScale = 1;
+    }
 
-    // if
-    resize(image, image_final, image_final.size(), INTER_LINEAR);
+    image_final.create(1000, 1000, CV_8UC3);
 
-    char *output = readBarcode(image_final);
+    if(rotateAndScale == 1) {
+        if(image_rotated.cols > 1000) {
+
+            int x0 = center.x - 499;
+            int y0 = center.y - 499;
+            for (int i=0; i<1000; i++) {
+                for (int j=0; j<1000; j++) {
+                    MpixelB(image_final, j, i) = MpixelB(image_rotated, y0 + j, x0 + i);
+                    MpixelG(image_final, j, i) = MpixelG(image_rotated, y0 + j, x0 + i);
+                    MpixelR(image_final, j, i) = MpixelR(image_rotated, y0 + j, x0 + i);
+                }
+            }
+        }
+    } else {
+        if (image_rotated.cols != 1000) {
+            resize(image, image_final, image_final.size(), INTER_LINEAR);
+        } else {
+            image_rotated.copyTo(image_final);
+        }
+    }
+
+    string output = readBarcode(image_final);
     cout << "This color 2D barcode says" << endl;
     cout << output << endl;
 
-     imshow("image", image);
-//     imshow("image_rotated", image_rotated);
-     imshow("image_final", image_final);
-
-//    int bits[6] = {0, 1, 1, 1, 0, 0};
-
-//    // covert to int
-//    int value = 32 * bits[0] + 16 * bits[1] + 8 * bits[2] + 4 * bits[3] + 2 * bits[4] + bits[5];
-//
-//    cout << "value is: " << value << endl;
-//
-//    char ch = encodingarray[value];
-//
-//    cout << "char is: " << ch << endl;
+    imshow("image", image);
+    imshow("image_final", image_final);
 
     waitKey(0);
     exit(0);
-
 }
