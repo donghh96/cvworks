@@ -11,6 +11,9 @@ using namespace cv;
 #define Mpixel(image, x, y)((int*)(((image).data) + (y)*((image).step)))[(x)]
 
 
+map <string, int> classMap = {{"D1", 0}, {"D7",1}, {"D15",2},{"D21",3},{"D28",4},{"D29",5},{"D31",6},{"D35",7},{"D49",8},
+                            {"D65",9},{"D71",10},{"D101",11},{"D106",12},{"D108",13},{"D111",14}};
+
 bool isPowerof2(const Mat& image)
 {
     return true;
@@ -198,6 +201,17 @@ int main(int argc, char** argv)
 
     vector<double> features;
 
+    string filepath = argv[1];
+
+    int slashPos = filepath.find_last_of("/");
+    int pos = filepath.find_first_of("_");
+    string texture = filepath.substr(slashPos+1, pos-slashPos-1);
+
+    int textureClass = classMap[texture];
+
+//    cout << "texture:" << texture << "  textureClass:" << textureClass <<endl;
+
+
     if (image_src.empty())
     {
         cout << "Load image file failed." << endl;
@@ -210,15 +224,27 @@ int main(int argc, char** argv)
 
 //    cout << src << endl;
 //    cout << result << endl;
-    for(int i=0; i<features.size(); i++) {
-        cout << features[i] << endl;
-    }
-    image_dst = result;
+//    for(int i=0; i<features.size(); i++) {
+//        cout << features[i] << endl;
+//    }
+//    image_dst = result;
 
 //    imwrite("dec2.png", image_dst);
 
-    imshow("src", image_src);
-    imshow("dst", image_dst);
+
+    stringstream ss;
+    ss << textureClass;
+    for(int i=0; i<features.size(); i++) {
+        ss << "," << features[i];
+    }
+
+    string output = ss.str();
+
+    cout << output << endl;
+
+
+//    imshow("src", image_src);
+//    imshow("dst", image_dst);
 //    imshow("reverse", image_reverse);
 
     waitKey(0);
