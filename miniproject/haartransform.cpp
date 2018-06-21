@@ -49,6 +49,7 @@ vector<double> meanAndSdev(const Mat_<int>& image, int rowStart, int rowEnd, int
         for(int y=rowStart; y<rowEnd; y++)
         {
             mean = mean + abs(Mpixel(image, x, y));
+//            mean = mean + Mpixel(image, x, y);
             var = var + pow(Mpixel(image, x, y), 2);
         }
     }
@@ -192,7 +193,9 @@ int main(int argc, char** argv)
 {
     Mat image_src, image_dst, image_reverse;
 
-    image_src = imread(argv[1], 0);
+    image_src = imread(argv[1], 1);
+    cvtColor(image_src, image_src, CV_BGR2GRAY);
+
     image_dst.create(image_src.size(), CV_8UC1);
     image_reverse.create(image_src.size(), CV_8UC1);
 
