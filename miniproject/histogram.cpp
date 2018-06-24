@@ -44,6 +44,33 @@ void NormaliseHisto(const Mat& image, float histo[256])
 
 }
 
+void NormaliseHisto2(const Mat& image, float histo[256])
+{
+
+    int N = image.cols * image.rows  / 4096;
+
+    float sum = 0.0;
+
+    for (int y=0; y<image.cols; y++)
+    {
+        for (int x=0; x<image.rows; x++)
+        {
+            histo[Mpixel(image, x, y)] += 1.0;
+        }
+    }
+
+    for(int i=0; i<256; i++)
+    {
+        sum = sum + (float)i * histo[i];
+    }
+
+    for(int i=0; i<256; i++)
+    {
+        histo[i] = histo[i] / sum * 1000000.0;
+    }
+
+}
+
 void contrastStreching(const Mat& image_src, Mat& image_dst)
 {
     double mean, var, sdev;
@@ -101,7 +128,9 @@ int main(int argc, char** argv)
 
     float hist[256] ={0.0};
     contrastStreching(image, image_contrast);
-    NormaliseHisto(image_contrast, hist);
+//    equalizeHist(image, image);
+    NormaliseHisto2(image, hist);
+
 
     stringstream ss;
     ss << textureClass;
@@ -114,7 +143,7 @@ int main(int argc, char** argv)
     cout << output << endl;
 
 //    imshow("image", image);
-    imshow("image_contrast", image_contrast);
+//    imshow("image_contrast", image_contrast);
 
     waitKey(0);
     exit(0);
